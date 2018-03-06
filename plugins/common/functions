@@ -398,18 +398,6 @@ is_deployed() {
   fi
 }
 
-is_container_running() {
-  declare desc="return 0 if given docker container id is in running state"
-  local CID=$1
-  local CONTAINER_STATUS=$(docker inspect -f '{{.State.Running}}' "$CID" || true)
-
-  if [[ "$CONTAINER_STATUS" == "true" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 is_container_status() {
   declare desc="return 0 if given docker container id is in given state"
   local CID=$1
@@ -608,6 +596,11 @@ docker_cleanup() {
   local DOKKU_APP_SKIP_CLEANUP
   source "$PLUGIN_AVAILABLE_PATH/config/functions"
 
+  if [[ "$APP" == "--force" ]]; then
+    FORCE_CLEANUP="true"
+    APP=""
+  fi
+
   if [[ "$FORCE_CLEANUP" != "true" ]]; then
     [[ -z "$APP" ]] && DOKKU_APP_SKIP_CLEANUP="$(config_get "$APP" DOKKU_SKIP_CLEANUP || true)"
     if [[ -n "$DOKKU_SKIP_CLEANUP" ]] || [[ -n "$DOKKU_APP_SKIP_CLEANUP" ]]; then
@@ -617,6 +610,9 @@ docker_cleanup() {
   fi
 
   dokku_log_info1 "Cleaning up..."
+  local DOKKU_SCHEDULER="docker-local"
+  [[ -n "$APP" ]] && DOKKU_SCHEDULER=$(config_get "$APP" DOKKU_SCHEDULER || echo "docker-local")
+  plugn trigger scheduler-docker-cleanup "$DOKKU_SCHEDULER" "$APP" "$FORCE_CLEANUP"
 
   # delete all non-running containers
   # shellcheck disable=SC2046

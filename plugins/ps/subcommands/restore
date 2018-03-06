@@ -9,6 +9,8 @@ ps_restore_cmd() {
   local cmd="ps:restore"
   local APP="$2"
 
+  docker_cleanup --force
+
   if [[ -n "$APP" ]]; then
     if ! (is_deployed "$APP"); then
       dokku_log_warn "App $APP has not been deployed"
